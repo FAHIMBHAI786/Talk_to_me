@@ -1,13 +1,17 @@
 package com.example.talktome;
 
+import static android.content.ContentValues.TAG;
+
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.media.ThumbnailUtils;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -26,6 +30,7 @@ import com.google.ai.client.generativeai.GenerativeModel;
 import com.google.ai.client.generativeai.java.GenerativeModelFutures;
 import com.google.ai.client.generativeai.type.Content;
 import com.google.ai.client.generativeai.type.GenerateContentResponse;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -37,6 +42,7 @@ import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -45,7 +51,10 @@ import java.util.concurrent.Executors;
 public class MainActivity extends AppCompatActivity implements TextToSpeech.OnInitListener {
 
     private static final int requestCode =1;
+    private static final int VOICE_INPUT_REQUEST_CODE = 2;
     ImageButton cameraButton;
+    FloatingActionButton cancelChat;
+    ImageButton micButton;
     ImageView capturedImg;
 
     EditText messageBox;
@@ -70,6 +79,8 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             return insets;
         });
 
+        cancelChat = findViewById(R.id.cancelChat);
+        cancelChat.setVisibility(View.GONE);
         cameraButton = findViewById(R.id.cameraButton);
         capturedImg = findViewById(R.id.capturedImg);
         messageBox = findViewById(R.id.messageBox);
@@ -89,7 +100,12 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             gemini_prompt(prompt);
 
         });
-
+        micButton = findViewById(R.id.micButton);
+        micButton.setOnClickListener(v -> startVoiceInput());
+        cancelChat.setOnClickListener(v -> {
+            textToSpeech.stop();
+            cancelChat.setVisibility(View.GONE);
+        });
 
     }
 
@@ -112,7 +128,27 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
 //            classifyImage(image);
         }
+        else if (requestCode == VOICE_INPUT_REQUEST_CODE && resultCode == RESULT_OK) {
+            assert data != null;
+            ArrayList<String> result = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+            if (result != null && !result.isEmpty()) {
+                String recognizedText = result.get(0);
+                Log.d(TAG, "Recognized text: " + recognizedText);
+                gemini_prompt(recognizedText);
+            }
+        }
         super.onActivityResult(requestCode, resultCode, data);
+    }
+    private void startVoiceInput() {
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak now...");
+        try {
+            startActivityIfNeeded(intent, VOICE_INPUT_REQUEST_CODE);
+        } catch (Exception e) {
+            Log.e(TAG, "Voice input failed", e);
+        }
     }
 
     public void classifyImage(Bitmap image) {
@@ -181,6 +217,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
     private void speak(String text) {
         textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
+
     }
 
     @Override
@@ -211,6 +248,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                     String resultText = result.getText();
                     outputText.setText(resultText);
                     speak(resultText);
+                    cancelChat.setVisibility(View.VISIBLE);
                 }
 
                 @Override
@@ -240,6 +278,11 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                     String resultText = result.getText();
                     outputText.setText(resultText);
                     speak(resultText);
+
+                    cancelChat.setVisibility(View.VISIBLE);
+
+
+
                 }
 
                 @Override

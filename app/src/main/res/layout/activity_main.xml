@@ -24,8 +24,8 @@
         android:id="@+id/outputText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="20dp"
-        android:text="hi"
+        android:padding="30dp"
+        android:text="Hi there, How can I help you today?"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -74,6 +74,12 @@
                 android:drawablePadding="4dp"
                 android:hint="Send message"
                 android:paddingStart="5dp" />
+            <ImageButton
+                android:id="@+id/micButton"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:background="@drawable/mic"
+                android:layout_gravity="center"/>
         </LinearLayout>
 
         <androidx.cardview.widget.CardView
@@ -85,12 +91,26 @@
 
             <ImageButton
                 android:id="@+id/sendButton"
-                android:layout_width="25dp"
-                android:layout_height="25dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:layout_gravity="center"
                 android:background="@drawable/arrow"
                 android:contentDescription="Send button" />
         </androidx.cardview.widget.CardView>
+
     </LinearLayout>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/cancelChat"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/close"
+        app:layout_constraintBottom_toTopOf="@+id/linearLayout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.967" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
