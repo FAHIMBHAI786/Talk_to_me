@@ -3,6 +3,7 @@ package com.example.talktome;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.media.ThumbnailUtils;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.speech.tts.TextToSpeech;
@@ -10,6 +11,7 @@ import android.util.Log;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 
 import androidx.activity.EdgeToEdge;
@@ -20,6 +22,14 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.talktome.ml.Model;
+import com.google.ai.client.generativeai.GenerativeModel;
+import com.google.ai.client.generativeai.java.GenerativeModelFutures;
+import com.google.ai.client.generativeai.type.Content;
+import com.google.ai.client.generativeai.type.GenerateContentResponse;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.MoreExecutors;
 
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
@@ -28,6 +38,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Locale;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity implements TextToSpeech.OnInitListener {
 
@@ -42,6 +55,9 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     private TextToSpeech textToSpeech;
 
     int imageSize = 32;
+    TextView outputText;
+    private String apiKey = "AIzaSyCaRYnDFD63KL90E7rqDjFudBtK2yLZq7E";
+    private GenerativeModelFutures model;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +74,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         capturedImg = findViewById(R.id.capturedImg);
         messageBox = findViewById(R.id.messageBox);
         sendButton = findViewById(R.id.sendButton);
+        outputText = findViewById(R.id.outputText);
 
         cameraButton.setOnClickListener(v -> {
             Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
@@ -66,10 +83,11 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
         textToSpeech = new TextToSpeech(this, this);
 
-        sendButton.setOnClickListener(v -> {
 
-            String text = messageBox.getText().toString();
-            speak(text);
+        sendButton.setOnClickListener(v -> {
+            String prompt = messageBox.getText().toString();
+            gemini_prompt(prompt);
+
         });
 
 
@@ -89,8 +107,10 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 //            Bundle extras = data.getExtras();
 //            assert extras != null;
             capturedImg.setImageBitmap(image);
+            gemini_prompt(image);
             image = Bitmap.createScaledBitmap(image,imageSize,imageSize,false);
-            classifyImage(image);
+
+//            classifyImage(image);
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
@@ -152,7 +172,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                 Log.e("TTS", "Language not supported");
             } else {
                 // TTS is ready to use
-                speak("Hello, welcome to talk to me a i !");
+                speak("Hi, how can I help you today?");
             }
         } else {
             Log.e("TTS", "Initialization failed");
@@ -170,5 +190,63 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             textToSpeech.shutdown();
         }
         super.onDestroy();
+    }
+    private void gemini_prompt(String prompt) {
+
+        // The Gemini 1.5 models are versatile and work with both text-only and multimodal prompts
+        GenerativeModel gm = new GenerativeModel(/* modelName */ "gemini-1.5-flash",
+// Access your API key as a Build Configuration variable (see "Set up your API key" above)
+                /* apiKey */apiKey);
+        GenerativeModelFutures model = GenerativeModelFutures.from(gm);
+
+        Content content = new Content.Builder()
+                .addText(prompt)
+//                .addImage()
+                .build();
+        ListenableFuture<GenerateContentResponse> response = model.generateContent(content);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            Futures.addCallback(response, new FutureCallback<GenerateContentResponse>() {
+                @Override
+                public void onSuccess(GenerateContentResponse result) {
+                    String resultText = result.getText();
+                    outputText.setText(resultText);
+                    speak(resultText);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    t.printStackTrace();
+                }
+            }, this.getMainExecutor());
+        }
+    }
+    private void gemini_prompt(Bitmap image) {
+
+        // The Gemini 1.5 models are versatile and work with both text-only and multimodal prompts
+        GenerativeModel gm = new GenerativeModel(/* modelName */ "gemini-1.5-flash",
+// Access your API key as a Build Configuration variable (see "Set up your API key" above)
+                /* apiKey */apiKey);
+        GenerativeModelFutures model = GenerativeModelFutures.from(gm);
+
+        Content content = new Content.Builder()
+                .addText("what is this?")
+                .addImage(image)
+                .build();
+        ListenableFuture<GenerateContentResponse> response = model.generateContent(content);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            Futures.addCallback(response, new FutureCallback<GenerateContentResponse>() {
+                @Override
+                public void onSuccess(GenerateContentResponse result) {
+                    String resultText = result.getText();
+                    outputText.setText(resultText);
+                    speak(resultText);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    t.printStackTrace();
+                }
+            }, this.getMainExecutor());
+        }
     }
 }
